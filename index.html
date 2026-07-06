@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>은우 블랙잭 — 멀티플레이어</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0f4a28; font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; color: #f0ede8; }
+
+  #setup { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 2rem; }
+  .setup-card { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15); border-radius: 20px; padding: 2.5rem; max-width: 500px; width: 100%; }
+  .setup-title { font-size: 28px; font-weight: 700; text-align: center; margin-bottom: 0.4rem; }
+  .setup-sub { font-size: 14px; color: rgba(255,255,255,0.5); text-align: center; margin-bottom: 2rem; }
+  .setup-label { font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 8px; }
+  .setup-row { margin-bottom: 1.5rem; }
+  .setup-divider { border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 1.5rem 0; }
+  .player-inputs { display: flex; flex-direction: column; gap: 8px; }
+  .player-input-row { display: flex; gap: 8px; align-items: center; }
+  .player-num { font-size: 13px; color: rgba(255,255,255,0.4); width: 24px; }
+  input[type="text"] { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 8px 12px; color: #fff; font-size: 14px; width: 100%; outline: none; }
+  input[type="text"]:focus { border-color: rgba(255,255,255,0.5); }
+  input[type="number"] { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 8px 12px; color: #fff; font-size: 15px; outline: none; text-align: center; }
+  input[type="number"]:focus { border-color: rgba(255,255,255,0.5); }
+  .count-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  .count-btn { padding: 8px 18px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: transparent; color: #fff; cursor: pointer; font-size: 14px; transition: all 0.15s; }
+  .count-btn.active { background: #2ecc71; border-color: #2ecc71; color: #0f4a28; font-weight: 700; }
+  .count-btn:hover:not(.active) { background: rgba(255,255,255,0.1); }
+
+  .bet-mode-btns { display: flex; gap: 10px; }
+  .bet-mode-btn { flex: 1; padding: 14px 10px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05); cursor: pointer; font-size: 14px; font-weight: 700; transition: all 0.15s; text-align: center; }
+  .bet-mode-btn .bm-amount { font-size: 22px; font-weight: 900; color: #f1c40f; display: block; margin-bottom: 4px; }
+  .bet-mode-btn .bm-desc { font-size: 11px; color: rgba(255,255,255,0.4); line-height: 1.5; }
+  .bet-mode-btn.active { border-color: #f1c40f; background: rgba(241,196,15,0.1); }
+  .bet-mode-btn:hover:not(.active) { background: rgba(255,255,255,0.08); }
+
+  .start-btn { width: 100%; padding: 14px; background: #2ecc71; color: #0f4a28; border: none; border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 0.5rem; }
+  .start-btn:hover { background: #27ae60; }
+
+  #game { display: none; flex-direction: column; min-height: 100vh; }
+  .game-header { background: rgba(0,0,0,0.25); padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; }
+  .game-title { font-size: 16px; font-weight: 700; }
+  .game-mode-badge { font-size: 12px; color: #f1c40f; background: rgba(241,196,15,0.1); border: 1px solid rgba(241,196,15,0.3); padding: 3px 10px; border-radius: 10px; }
+  .restart-btn { padding: 6px 14px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.25); background: transparent; color: rgba(255,255,255,0.7); font-size: 13px; cursor: pointer; }
+  .restart-btn:hover { background: rgba(255,255,255,0.1); }
+  .round-badge { font-size: 12px; color: rgba(255,255,255,0.4); }
+
+  .dealer-zone { background: rgba(0,0,0,0.2); padding: 16px 20px; }
+  .zone-label { font-size: 11px; letter-spacing: 0.1em; color: rgba(255,255,255,0.45); text-transform: uppercase; margin-bottom: 8px; }
+  .dealer-cards { display: flex; gap: 8px; flex-wrap: wrap; min-height: 88px; align-items: flex-end; }
+  .dealer-score { font-size: 13px; color: rgba(255,255,255,0.7); margin-top: 6px; }
+
+  .players-zone { flex: 1; padding: 16px 12px; overflow-x: auto; }
+  .players-grid { display: flex; gap: 12px; min-width: min-content; align-items: flex-start; }
+
+  .player-panel { background: rgba(255,255,255,0.07); border: 2px solid transparent; border-radius: 14px; padding: 12px; width: 215px; flex-shrink: 0; transition: border-color 0.2s, background 0.2s; }
+  .player-title-row { font-size: 13px; font-weight: 700; margin-bottom: 6px; color: rgba(255,255,255,0.85); display: flex; align-items: center; justify-content: space-between; }
+
+  .player-stats { display: flex; gap: 6px; margin-bottom: 8px; }
+  .stat-box { flex: 1; border-radius: 8px; padding: 5px 6px; text-align: center; }
+  .stat-box.loss-box { background: rgba(231,76,60,0.15); border: 1px solid rgba(231,76,60,0.25); }
+  .stat-box.chick-box { background: rgba(241,196,15,0.12); border: 1px solid rgba(241,196,15,0.25); }
+  .stat-label { font-size: 9px; color: rgba(255,255,255,0.4); margin-bottom: 2px; }
+  .stat-val { font-size: 15px; font-weight: 900; }
+  .stat-val.loss-val { color: #e74c3c; }
+  .stat-val.chick-val { color: #f1c40f; }
+
+  .hand-box { border: 2px solid transparent; border-radius: 10px; padding: 8px; margin-bottom: 6px; transition: all 0.2s; }
+  .hand-box:last-child { margin-bottom: 0; }
+  .hand-box.active { border-color: #f1c40f; background: rgba(241,196,15,0.1); }
+  .hand-box.busted { border-color: #e74c3c; background: rgba(231,76,60,0.08); }
+  .hand-box.won { border-color: #2ecc71; background: rgba(46,204,113,0.08); }
+  .hand-box.stood { border-color: rgba(255,255,255,0.15); background: rgba(255,255,255,0.03); }
+  .hand-label { font-size: 10px; color: rgba(255,255,255,0.4); margin-bottom: 4px; display: flex; justify-content: space-between; }
+  .hand-cards { display: flex; gap: 4px; flex-wrap: wrap; min-height: 58px; align-items: flex-end; margin-bottom: 4px; }
+  .hand-score { font-size: 12px; color: rgba(255,255,255,0.65); }
+  .hand-bet-info { font-size: 14px; font-weight: 800; color: #f1c40f; margin-top: 4px; letter-spacing: 0.02em; }
+  .hand-status { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; white-space: nowrap; }
+  .status-active { background: rgba(241,196,15,0.2); color: #f1c40f; }
+  .status-busted { background: rgba(231,76,60,0.2); color: #e74c3c; }
+  .status-won { background: rgba(46,204,113,0.2); color: #2ecc71; }
+  .status-stood { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); }
+  .status-bj { background: rgba(243,156,18,0.2); color: #f39c12; }
+  .status-push { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); }
+  .status-lose { background: rgba(231,76,60,0.2); color: #e74c3c; }
+
+  .card { width: 44px; height: 64px; background: #fff; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; line-height: 1.2; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+  .card.red { color: #c0392b; }
+  .card.black { color: #1a1a1a; }
+  .card.back { background: #2c3e8c; }
+  .card-pattern { width: 32px; height: 50px; background: repeating-linear-gradient(45deg, #3a50a8 0px, #3a50a8 3px, #2c3e8c 3px, #2c3e8c 6px); border-radius: 4px; }
+  .card-lg { width: 48px; height: 70px; font-size: 15px; }
+
+  .controls { background: rgba(0,0,0,0.3); padding: 14px 20px; }
+  .msg-bar { padding: 8px 20px; background: rgba(0,0,0,0.2); font-size: 14px; color: rgba(255,255,255,0.8); min-height: 36px; display: flex; align-items: center; gap: 8px; }
+  .msg-bar span { font-weight: 600; color: #f1c40f; }
+  .ctrl-header { font-size: 13px; color: rgba(255,255,255,0.55); margin-bottom: 10px; }
+  .ctrl-header span { color: #f1c40f; font-weight: 600; }
+  .ctrl-hint { font-size: 11px; color: rgba(255,255,255,0.35); margin-top: 4px; }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .gbtn { padding: 10px 20px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.08); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .gbtn:hover:not(:disabled) { background: rgba(255,255,255,0.16); }
+  .gbtn:active:not(:disabled) { transform: scale(0.97); }
+  .gbtn:disabled { opacity: 0.3; cursor: default; }
+  .gbtn.primary { background: #2ecc71; color: #0f4a28; border-color: #2ecc71; }
+  .gbtn.primary:hover:not(:disabled) { background: #27ae60; }
+  .gbtn.yellow { background: rgba(241,196,15,0.15); border-color: #f1c40f; color: #f1c40f; }
+  .gbtn.purple { background: rgba(155,89,182,0.18); border-color: #9b59b6; color: #c39bd3; }
+
+  .bet-input-wrap { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .bet-input-wrap input[type="number"] { font-size: 22px; font-weight: 700; color: #f1c40f; background: rgba(255,255,255,0.08); border: 1px solid rgba(241,196,15,0.4); width: 110px; padding: 8px 12px; border-radius: 8px; }
+  .bet-unit-label { font-size: 14px; color: rgba(255,255,255,0.5); }
+  .bet-preview { font-size: 12px; color: rgba(241,196,15,0.7); margin-bottom: 10px; min-height: 18px; }
+  .quick-bets { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .qbtn { padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.75); font-size: 13px; cursor: pointer; transition: all 0.12s; }
+  .qbtn:hover { background: rgba(255,255,255,0.14); }
+</style>
+</head>
+<body>
+
+<div id="setup">
+  <div class="setup-card">
+    <div class="setup-title">🃏 은우 블랙잭</div>
+    <div class="setup-sub">멀티플레이어 — 최대 10명</div>
+
+    <div class="setup-row">
+      <div class="setup-label">단가 선택</div>
+      <div class="bet-mode-btns">
+        <button class="bet-mode-btn active" id="mode119" onclick="setBetMode(119)">
+          <span class="bm-amount">119개</span>
+        </button>
+        <button class="bet-mode-btn" id="modeFree" onclick="setBetMode('free')">
+          <span class="bm-amount" style="-webkit-text-fill-color:#aaa;color:#aaa;">직접 설정</span>
+        </button>
+      </div>
+      <!-- 직접 설정 -->
+      <div id="freeSettings" style="display:none;margin-top:12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:14px;display:none;">
+        <div style="font-size:12px;color:rgba(255,255,255,0.45);margin-bottom:10px;">단가 직접 설정</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input type="number" id="freeUnit" value="100" min="1"
+            style="width:90px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:7px 10px;color:#f1c40f;font-size:16px;font-weight:700;outline:none;text-align:center;">
+          <span style="font-size:13px;color:rgba(255,255,255,0.45);">개</span>
+        </div>
+      </div>
+    </div>
+
+    <hr class="setup-divider">
+
+    <div class="setup-row">
+      <div class="setup-label">플레이어 수</div>
+      <div class="count-btns" id="countBtns">
+        <button class="count-btn" onclick="setCount(1)">1명</button>
+        <button class="count-btn" onclick="setCount(2)">2명</button>
+        <button class="count-btn active" onclick="setCount(3)">3명</button>
+        <button class="count-btn" onclick="setCount(4)">4명</button>
+        <button class="count-btn" onclick="setCount(5)">5명</button>
+        <button class="count-btn" onclick="setCount(6)">6명</button>
+        <button class="count-btn" onclick="setCount(7)">7명</button>
+        <button class="count-btn" onclick="setCount(8)">8명</button>
+        <button class="count-btn" onclick="setCount(9)">9명</button>
+        <button class="count-btn" onclick="setCount(10)">10명</button>
+      </div>
+    </div>
+    <div class="setup-row">
+      <div class="setup-label">플레이어 이름</div>
+      <div class="player-inputs" id="playerInputs"></div>
+    </div>
+    <button class="start-btn" onclick="startGame()">게임 시작</button>
+  </div>
+</div>
+
+<div id="game">
+  <div class="game-header">
+    <div class="game-title">🃏 은우 블랙잭</div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <span class="game-mode-badge" id="modeBadge">119개 단가</span>
+      <span class="round-badge" id="roundBadge">라운드 1</span>
+      <button class="restart-btn" onclick="goSetup()">처음으로</button>
+    </div>
+  </div>
+  <div class="dealer-zone">
+    <div class="zone-label">딜러</div>
+    <div class="dealer-cards" id="dealerCards"></div>
+    <div class="dealer-score" id="dealerScore"></div>
+  </div>
+  <div class="msg-bar" id="msgBar">준비 중...</div>
+  <div class="players-zone">
+    <div class="players-grid" id="playersGrid"></div>
+  </div>
+  <div class="controls" id="controls"></div>
+</div>
+
+<script>
+const SUITS = ['♠','♥','♦','♣'];
+const RANKS = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+
+const BET_MODES = {
+  119: { unit: 119 }
+};
+
+let betModeKey = 119;
+let playerCount = 3;
+let players = [];
+let dealerHand = [];
+let deck = [];
+let round = 1;
+let phase = 'bet';
+let currentPlayerIdx = 0;
+let currentHandIdx = 0;
+let bets = [];
+
+function getMode() {
+  return betModeKey === 'free' ? getFreeMode() : BET_MODES[betModeKey];
+}
+
+function setBetMode(k) {
+  betModeKey = k;
+  document.getElementById('mode119').classList.toggle('active', k===119);
+  document.getElementById('modeFree').classList.toggle('active', k==='free');
+  const fs = document.getElementById('freeSettings');
+  if (fs) fs.style.display = k==='free' ? 'block' : 'none';
+}
+
+function getFreeMode() {
+  const unit = parseInt(document.getElementById('freeUnit').value) || 100;
+  return { unit };
+}
+
+function setCount(n) {
+  playerCount = n;
+  document.querySelectorAll('.count-btn').forEach((b,i) => b.classList.toggle('active', i+1===n));
+  renderPlayerInputs();
+}
+
+function renderPlayerInputs() {
+  const c = document.getElementById('playerInputs');
+  const existing = [...c.querySelectorAll('input')].map(i => i.value);
+  c.innerHTML = '';
+  for (let i = 0; i < playerCount; i++) {
+    const row = document.createElement('div');
+    row.className = 'player-input-row';
+    row.innerHTML = `
+      <span class="player-num">${i+1}</span>
+      <input type="text" id="pinput${i}" placeholder="플레이어 ${i+1}" value="${existing[i]||''}">
+    `;
+    c.appendChild(row);
+  }
+}
+
+function startGame() {
+  const names = [...document.querySelectorAll('#playerInputs input')].map((inp,i) => inp.value.trim() || `플레이어 ${i+1}`);
+  players = names.map((name, i) => ({
+    name, id: i, hands: [], status: 'waiting',
+    totalLoss: 0,
+    totalChick: 0
+  }));
+  bets = new Array(players.length).fill(0);
+  round = 1;
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('game').style.display = 'flex';
+  if (betModeKey === 'free') {
+    const fm = getFreeMode();
+    document.getElementById('modeBadge').textContent = `직접 설정 (${fm.unit}개 단가)`;
+  } else {
+    document.getElementById('modeBadge').textContent = `${BET_MODES[betModeKey].unit}개 단가`;
+  }
+  startRound();
+}
+
+function goSetup() {
+  document.getElementById('setup').style.display = 'flex';
+  document.getElementById('game').style.display = 'none';
+}
+
+function makeDeck() {
+  deck = [];
+  for (let s of SUITS) for (let r of RANKS) deck.push({s,r});
+  deck = [...deck,...deck,...deck,...deck];
+  for (let i = deck.length-1; i > 0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [deck[i],deck[j]] = [deck[j],deck[i]];
+  }
+}
+
+function cardVal(r) {
+  if (r==='A') return 11;
+  if (['J','Q','K'].includes(r)) return 10;
+  return parseInt(r);
+}
+
+function handScore(cards) {
+  let total=0, aces=0;
+  for (let c of cards) { total+=cardVal(c.r); if(c.r==='A') aces++; }
+  while (total>21 && aces>0) { total-=10; aces--; }
+  return total;
+}
+
+function isRed(s) { return s==='♥'||s==='♦'; }
+
+function cardEl(c, hidden, large) {
+  const d = document.createElement('div');
+  if (hidden) {
+    d.className='card'+(large?' card-lg':'')+' back';
+    const p=document.createElement('div'); p.className='card-pattern';
+    if(large){p.style.width='38px';p.style.height='58px';}
+    d.appendChild(p); return d;
+  }
+  d.className='card'+(large?' card-lg':'')+' '+(isRed(c.s)?'red':'black');
+  d.innerHTML=`<span>${c.r}</span><span style="font-size:${large?'12':'11'}px">${c.s}</span>`;
+  return d;
+}
+
+function startRound() {
+  document.getElementById('roundBadge').textContent = `라운드 ${round}`;
+  makeDeck();
+  dealerHand = [];
+  players.forEach(p => { p.hands=[]; p.status='waiting'; });
+  bets = new Array(players.length).fill(0);
+  currentPlayerIdx = 0;
+  phase = 'bet';
+  renderDealer(true);
+  renderPlayers();
+  showBetInput();
+}
+
+function showBetInput() {
+  const p = players[currentPlayerIdx];
+  p.status = 'betting';
+  renderPlayers();
+  renderControls();
+  setMsg(`<span>${p.name}</span>님, 베팅 개수를 입력하세요`);
+}
+
+function confirmBet() {
+  const input = document.getElementById('betInput');
+  const val = parseInt(input.value);
+  if (!val || val < 1) { setMsg('1개 이상 입력하세요'); return; }
+  if (betModeKey !== 'free') {
+    const mode = BET_MODES[betModeKey];
+    if (val % mode.unit !== 0) {
+      setMsg(`${mode.unit}개 단위로 입력하세요`);
+      return;
+    }
+  }
+  bets[currentPlayerIdx] = val;
+  players[currentPlayerIdx].status = 'bet';
+  currentPlayerIdx++;
+  if (currentPlayerIdx >= players.length) {
+    dealCards();
+  } else {
+    renderPlayers();
+    showBetInput();
+  }
+}
+
+function setBetVal(n) {
+  const inp = document.getElementById('betInput');
+  if (inp) { inp.value = n; }
+}
+
+function dealCards() {
+  players.forEach((p,i) => {
+    p.hands = [{ cards: [deck.pop(), deck.pop()], bet: bets[i], status: 'waiting', resultMsg: '' }];
+  });
+  dealerHand = [deck.pop(), deck.pop()];
+  phase = 'play';
+  currentPlayerIdx = -1;
+  currentHandIdx = 0;
+  renderDealer(true);
+  renderPlayers();
+  nextPlayer();
+}
+
+function canSplit(hand) {
+  return hand.cards.length === 2 && hand.cards[0].r === hand.cards[1].r;
+}
+
+function nextPlayer() {
+  currentPlayerIdx++;
+  currentHandIdx = 0;
+  if (currentPlayerIdx >= players.length) { dealerTurn(); return; }
+  processCurrentHand();
+}
+
+function processCurrentHand() {
+  const p = players[currentPlayerIdx];
+  if (currentHandIdx >= p.hands.length) { nextPlayer(); return; }
+  const hand = p.hands[currentHandIdx];
+  const sc = handScore(hand.cards);
+
+  if (sc === 21) {
+    hand.status = (hand.cards.length === 2 && p.hands.length === 1) ? 'blackjack' : 'stood';
+    renderPlayers();
+    setMsg(`<span>${p.name}</span> ${p.hands.length>1?'(핸드'+(currentHandIdx+1)+') ':''}21!`);
+    currentHandIdx++;
+    setTimeout(processCurrentHand, 800);
+    return;
+  }
+
+  hand.status = 'active';
+  renderPlayers();
+  renderControls();
+  const tag = p.hands.length > 1 ? ` (핸드 ${currentHandIdx+1}/${p.hands.length})` : '';
+  setMsg(`<span>${p.name}</span>${tag} 차례 — 합계 ${sc}`);
+}
+
+function hit() {
+  const p = players[currentPlayerIdx];
+  const hand = p.hands[currentHandIdx];
+  hand.cards.push(deck.pop());
+  const sc = handScore(hand.cards);
+  renderPlayers();
+  if (sc > 21) {
+    hand.status='busted'; renderPlayers();
+    setMsg(`<span>${p.name}</span> 버스트!`);
+    currentHandIdx++; setTimeout(processCurrentHand, 700);
+  } else if (sc === 21) {
+    hand.status='stood'; renderPlayers();
+    setMsg(`<span>${p.name}</span> 21!`);
+    currentHandIdx++; setTimeout(processCurrentHand, 700);
+  } else {
+    renderControls();
+    setMsg(`<span>${p.name}</span> 차례 — 합계 ${sc}`);
+  }
+}
+
+function stand() {
+  players[currentPlayerIdx].hands[currentHandIdx].status='stood';
+  renderPlayers(); currentHandIdx++; processCurrentHand();
+}
+
+function doubleDown() {
+  const p = players[currentPlayerIdx];
+  const hand = p.hands[currentHandIdx];
+  hand.bet *= 2;
+  hand.cards.push(deck.pop());
+  const sc = handScore(hand.cards);
+  renderPlayers();
+  if (sc > 21) { hand.status='busted'; renderPlayers(); setMsg(`<span>${p.name}</span> 버스트!`); }
+  else { hand.status='stood'; renderPlayers(); setMsg(`<span>${p.name}</span> 더블다운 — ${sc}점`); }
+  currentHandIdx++; setTimeout(processCurrentHand, 700);
+}
+
+function splitHand() {
+  const p = players[currentPlayerIdx];
+  const hand = p.hands[currentHandIdx];
+  if (!canSplit(hand)) return;
+  const origBet = bets[p.id] || hand.bet; // 원래 베팅 단위 유지
+  const newHand1 = { cards: [hand.cards[0], deck.pop()], bet: origBet, status: 'waiting', resultMsg: '' };
+  const newHand2 = { cards: [hand.cards[1], deck.pop()], bet: origBet, status: 'waiting', resultMsg: '' };
+  p.hands.splice(currentHandIdx, 1, newHand1, newHand2);
+  renderPlayers();
+  setMsg(`<span>${p.name}</span> 스플릿!`);
+  setTimeout(processCurrentHand, 500);
+}
+
+function dealerTurn() {
+  phase='dealer'; renderDealer(false); renderControls();
+  setMsg('딜러 차례...');
+  setTimeout(dealerDraw, 600);
+}
+
+function dealerDraw() {
+  if (handScore(dealerHand)<17) { dealerHand.push(deck.pop()); renderDealer(false); setTimeout(dealerDraw,600); }
+  else showResults();
+}
+
+function showResults() {
+  phase='result';
+  const ds=handScore(dealerHand), dealerBust=ds>21;
+  renderDealer(false);
+
+  players.forEach((p) => {
+    p.hands.forEach(hand => {
+      const ps = handScore(hand.cards);
+      if (hand.status === 'busted') {
+        p.totalLoss += hand.bet;
+        hand.resultMsg = `버스트 — 별풍선 ${hand.bet}개 손실`;
+      } else if (hand.status === 'blackjack') {
+        if (ds === 21 && dealerHand.length === 2) {
+          hand.status='push'; hand.resultMsg='무승부';
+        } else {
+          p.totalChick += hand.bet;
+          hand.resultMsg = `블랙잭! 별풍선 +${hand.bet}`; hand.status='won';
+        }
+      } else if (dealerBust || ps > ds) {
+        p.totalChick += hand.bet;
+        hand.status='won';
+        hand.resultMsg = `승리! 별풍선 +${hand.bet}`;
+      } else if (ps === ds) {
+        hand.status='push'; hand.resultMsg='무승부';
+      } else {
+        p.totalLoss += hand.bet;
+        hand.status='lose'; hand.resultMsg=`패배 — 별풍선 ${hand.bet}개 손실`;
+      }
+    });
+  });
+
+  renderPlayers(); renderControls();
+  setMsg(dealerBust ? '딜러 버스트! 생존 플레이어 모두 승리' : `딜러: ${ds}점`);
+}
+
+function nextRound() {
+  round++;
+  startRound();
+}
+
+function renderDealer(hideSecond) {
+  const el=document.getElementById('dealerCards');
+  el.innerHTML='';
+  dealerHand.forEach((c,i)=>el.appendChild(cardEl(c,hideSecond&&i===1,true)));
+  const sc=document.getElementById('dealerScore');
+  if (!dealerHand.length) { sc.textContent=''; return; }
+  sc.textContent = hideSecond ? cardVal(dealerHand[0].r)+' + ?' : '합계: '+handScore(dealerHand);
+}
+
+function renderPlayers() {
+  const grid=document.getElementById('playersGrid');
+  grid.innerHTML='';
+  players.forEach((p,pi) => {
+    const panel=document.createElement('div');
+    panel.className='player-panel';
+
+    let html = `
+      <div class="player-title-row">
+        <span>${p.name}</span>
+        ${p.status==='betting'?'<span class="hand-status status-active">베팅중</span>':''}
+      </div>
+      <div class="player-stats">
+        <div class="stat-box loss-box">
+          <div class="stat-label">마이너스</div>
+          <div class="stat-val loss-val">${p.totalLoss > 0 ? '-'+p.totalLoss : '0'}</div>
+        </div>
+        <div class="stat-box chick-box">
+          <div class="stat-label">플러스</div>
+          <div class="stat-val chick-val">${p.totalChick > 0 ? '+'+p.totalChick : '0'}</div>
+        </div>
+      </div>
+    `;
+
+    if (p.hands.length === 0) {
+      html += `<div style="font-size:12px;color:rgba(255,255,255,0.3)">대기중</div>`;
+    } else {
+      p.hands.forEach((hand, hi) => {
+        const sc = handScore(hand.cards);
+        let boxClass = 'hand-box';
+        if (hand.status==='active') boxClass+=' active';
+        else if (hand.status==='busted'||hand.status==='lose') boxClass+=' busted';
+        else if (hand.status==='won'||hand.status==='blackjack') boxClass+=' won';
+        else if (['stood','waiting'].includes(hand.status)) boxClass+=' stood';
+
+        html += `<div class="${boxClass}">
+          <div class="hand-label">
+            <span>${p.hands.length>1?'핸드 '+(hi+1):''}</span>
+            <span>${getHandBadge(hand.status)}</span>
+          </div>
+          <div class="hand-cards" id="hc-${pi}-${hi}"></div>
+          <div class="hand-score">${hand.cards.length>0?'합계: '+sc:''}</div>
+          <div class="hand-bet-info">베팅: ${hand.bet}개</div>
+          ${hand.resultMsg?`<div style="font-size:11px;margin-top:3px;color:rgba(255,255,255,0.8)">${hand.resultMsg}</div>`:''}
+        </div>`;
+      });
+    }
+
+    panel.innerHTML = html;
+    grid.appendChild(panel);
+
+    p.hands.forEach((hand, hi) => {
+      const ce = panel.querySelector(`#hc-${pi}-${hi}`);
+      if (ce) hand.cards.forEach(c => ce.appendChild(cardEl(c, false, false)));
+    });
+  });
+}
+
+function getHandBadge(s) {
+  if (s==='active') return '<span class="hand-status status-active">진행중</span>';
+  if (s==='busted') return '<span class="hand-status status-busted">버스트</span>';
+  if (s==='blackjack') return '<span class="hand-status status-bj">블랙잭</span>';
+  if (s==='won') return '<span class="hand-status status-won">승리</span>';
+  if (s==='push') return '<span class="hand-status status-push">무승부</span>';
+  if (s==='lose') return '<span class="hand-status status-lose">패배</span>';
+  if (s==='stood') return '<span class="hand-status status-stood">스탠드</span>';
+  return '';
+}
+
+function renderControls() {
+  const el=document.getElementById('controls');
+  const mode = BET_MODES[betModeKey];
+
+  if (phase==='bet') {
+    const p=players[currentPlayerIdx];
+    const isFree = betModeKey === 'free';
+    const mode = getMode();
+    const quickAmts = isFree
+      ? [100, 119, 200, 500, 1000, 2000]
+      : [119, 238, 357, 595, 1190, 2380];
+    const defaultVal = isFree ? 100 : mode.unit;
+    const modeDesc = isFree ? `직접 설정 (단가: ${mode.unit}개)` : `단가: ${mode.unit}개`;
+    el.innerHTML=`
+      <div class="ctrl-header"><span>${p.name}</span>님 베팅 개수 입력 (${modeDesc})</div>
+      <div class="bet-input-wrap">
+        <input type="number" id="betInput" min="1" step="1" value="${defaultVal}"
+          onkeydown="if(event.key==='Enter')confirmBet()">
+        <span class="bet-unit-label">개</span>
+      </div>
+      <div class="quick-bets">
+        ${quickAmts.map(v=>`<button class="qbtn" onclick="setBetVal(${v})">${v}</button>`).join('')}
+      </div>
+      <div class="btn-row">
+        <button class="gbtn primary" onclick="confirmBet()">베팅 확인 ✓</button>
+      </div>
+    `;
+    setTimeout(()=>{ const inp=document.getElementById('betInput'); if(inp) inp.focus(); },50);
+
+  } else if (phase==='play') {
+    const p=players[currentPlayerIdx];
+    const hand = p ? p.hands[currentHandIdx] : null;
+    const canDouble = hand && hand.cards.length===2;
+    const canSplitNow = hand && canSplit(hand) && p.hands.length < 4;
+    const tag = p && p.hands.length > 1 ? ` (핸드 ${currentHandIdx+1}/${p.hands.length})` : '';
+    el.innerHTML=`
+      <div class="ctrl-header"><span>${p?p.name:''}</span>${tag} 차례 — 베팅: ${hand?hand.bet:0}개</div>
+      <div class="btn-row">
+        <button class="gbtn primary" onclick="hit()">히트</button>
+        <button class="gbtn" onclick="stand()">스탠드</button>
+        <button class="gbtn yellow" onclick="doubleDown()" ${!canDouble?'disabled':''}>더블다운</button>
+        <button class="gbtn purple" onclick="splitHand()" ${!canSplitNow?'disabled':''}>스플릿</button>
+      </div>
+    `;
+  } else if (phase==='dealer') {
+    el.innerHTML=`<div style="color:rgba(255,255,255,0.5);font-size:14px">딜러 진행 중...</div>`;
+  } else if (phase==='result') {
+    el.innerHTML=`
+      <div class="btn-row">
+        <button class="gbtn primary" onclick="nextRound()">다음 라운드 →</button>
+        <button class="gbtn" onclick="goSetup()">처음으로</button>
+      </div>
+    `;
+  } else {
+    el.innerHTML='';
+  }
+}
+
+function setMsg(html) { document.getElementById('msgBar').innerHTML=html; }
+
+setCount(3);
+renderPlayerInputs();
+</script>
+</body>
+</html>
